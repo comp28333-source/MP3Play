@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Музыкальный 3D Медиаплеер</title>
+<!-- Подключение Three.js для 3D WebGL -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+* { box-sizing: border-box; }
+body {
+    background: #090d0b;
+    color: #e0e0e0;
+    font-family: sans-serif;
+    margin: 0;
+    padding: 15px;
+}
+.logo {
+    text-align: center;
+    margin-bottom: 15px;
+}
+.logo div {
+    font-size: 28px;
+}
+.global-player {
+    background: linear-gradient(145deg, #18201c, #0f1412);
+    padding: 22px;
+    border-radius: 20px;
+    margin-bottom: 25px;
+    box-shadow: inset 0 2px 5px rgba(0, 255, 170, 0.15), 14px 14px 28px #060807, -14px -14px 28px #222e28;
+    text-align: center;
+    border: 1px solid #24332b;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+.track-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 15px;
+    background: rgba(10, 13, 12, 0.6);
+    padding: 12px 18px;
+    border-radius: 12px;
+    border: 1px solid #1a2721;
+}
+.vinyl-disc {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #00ffaa 10%, #111 11%, #222 30%, #000 70%);
+    border: 2px solid #00ffaa;
+    box-shadow: 0 0 10px rgba(0,255,170,0.4);
+    animation: spinVinyl 4s linear infinite;
+    animation-play-state: paused;
+    flex-shrink: 0;
+}
+.global-player.playing .vinyl-disc {
+    animation-play-state: running;
+}
+@keyframes spinVinyl {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+.player-title {
+    font-size: 16px;
+    color: #00ffaa;
+    font-weight: bold;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.9);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 80%;
+}
+.folder-picker-bar {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    background: rgba(10, 15, 13, 0.6);
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid #1a2721;
+    flex-wrap: wrap;
+}
+.folder-btn-label {
+    background: linear-gradient(145deg, #00aa66, #007744);
+    color: #fff;
+    border: 1px solid #00ffaa;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(0,255,170,0.3);
+    transition: 0.2s;
+    display: inline-block;
+}
+.folder-btn-label:hover {
+    background: linear-gradient(145deg, #00cc77, #008855);
+    transform: translateY(-2px);
+}
+#folderInput {
+    display: none;
+}
+.folder-status {
+    color: #8fa39b;
+    font-size: 13px;
+    width: 100%;
+    text-align: center;
+    margin-top: 5px;
+}
+.viz-select-container {
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.viz-label {
+    color: #8fa39b;
+    font-size: 13px;
+    font-weight: bold;
+}
+.viz-select {
+    background: linear-gradient(145deg, #16201b, #0f1412);
+    color: #00ffaa;
+    border: 1px solid #283d34;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: bold;
+    border-radius: 8px;
+    outline: none;
+    cursor: pointer;
+    box-shadow: 3px 3px 6px #060807, -3px -3px 6px #1b2621;
+}
+.viz-settings-bar {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    background: rgba(10, 15, 13, 0.5);
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid #1a2721;
+}
+.setting-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.setting-group span {
+    color: #8fa39b;
+    font-size: 12px;
+}
+.setting-btn {
+    background: linear-gradient(145deg, #16201b, #0f1412);
+    color: #00ffaa;
+    border: 1px solid #283d34;
+    padding: 5px 9px;
+    font-size: 11px;
+    font-weight: bold;
+    border-radius: 6px;
+    cursor: pointer;
+}
+.setting-val {
+    color: #00ffaa;
+    font-family: monospace;
+    font-size: 12px;
+    min-width: 32px;
+    text-align: center;
+}
+.visualizer-box {
+    height: 320px;
+    margin-bottom: 15px;
+    background: #020403;
+    border-radius: 14px;
+    box-shadow: inset 10px 10px 20px #000, inset -10px -10px 20px #0c110e;
+    border: 1px solid #1a2921;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+}
+.visualizer-box:fullscreen {
+    width: 100vw !important;
+    height: 100vh !important;
+    border-radius: 0 !important;
+    border: none !important;
+    background: #000 !important;
+}
+#threeCanvasContainer {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: block;
+}
+.progress-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 12px 0;
+}
+.time-stamp {
+    color: #8fa39b;
+    font-size: 12px;
+    font-family: monospace;
+    min-width: 40px;
+}
+.seek-bar {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 6px;
+    background: #0a0d0c;
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+}
+.seek-bar::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #00ffaa;
+    box-shadow: 0 0 8px #00ffaa;
+    cursor: pointer;
+}
+.controls-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+}
+.player-controls {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.player-controls button {
+    background: linear-gradient(145deg, #1b2622, #111815);
+    color: #00ffaa;
+    border: 1px solid #283d34;
+    padding: 10px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 13px;
+}
+.player-controls button:hover {
+    background: linear-gradient(145deg, #22332c, #16201b);
+    color: #ffffff;
+    border-color: #00ffaa;
+}
+.player-controls button.active-mode {
+    background: linear-gradient(145deg, #00aa66, #007744);
+    color: #fff;
+    border-color: #00ffaa;
+    box-shadow: 0 0 12px rgba(0,255,170,0.6);
+}
+.volume-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #8fa39b;
+    font-size: 13px;
+}
+.volume-slider {
+    -webkit-appearance: none;
+    width: 90px;
+    height: 4px;
+    background: #0a0d0c;
+    border-radius: 2px;
+    outline: none;
+}
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #00ffaa;
+    cursor: pointer;
+}
+.playlist-container {
+    max-height: 460px;
+    overflow-y: auto;
+    padding-right: 5px;
+    margin-bottom: 20px;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+.playlist-container::-webkit-scrollbar {
+    width: 6px;
+}
+.playlist-container::-webkit-scrollbar-thumb {
+    background: #24332b;
+    border-radius: 3px;
+}
+.song-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(145deg, #18201c, #111614);
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    border: 1px solid #23302b;
+    transition: 0.2s;
+}
+.song-row:hover {
+    border-color: #0088cc;
+    transform: translateX(3px);
+}
+.song-row.playing-now {
+    border: 1.5px solid #00ffaa;
+    background: linear-gradient(145deg, #153327, #0f221a);
+    box-shadow: 0 0 16px rgba(0, 255, 170, 0.25);
+}
+.song-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    overflow: hidden;
+}
+.song-num {
+    font-size: 12px;
+    color: #557766;
+    font-family: monospace;
+    font-weight: bold;
+}
+.song-name {
+    font-weight: bold;
+    color: #e0e0e0;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.song-duration {
+    color: #8fa39b;
+    font-size: 12px;
+    font-family: monospace;
+    background: #0a0d0c;
+    padding: 3px 8px;
+    border-radius: 5px;
+    border: 1px solid #1a2521;
+}
+</style>
+</head>
+<body>
+
+<div class="logo">
+  <div>🎵</div>
+</div>
+
+<main>
+<div class="global-player" id="playerBox">
+    <div class="track-header">
+        <div class="vinyl-disc"></div>
+        <div class="player-title" id="currentTrackName">🎵 Выберите папку с музыкой</div>
+    </div>
+    
+    <!-- Кнопки выбора папок -->
+    <div class="folder-picker-bar">
+        <label class="folder-btn-label" for="folderInput">📂 Выбрать папку (новую)</label>
+        <input type="file" id="folderInput" webkitdirectory directory multiple accept="audio/*">
+        
+        <label class="folder-btn-label" style="background: linear-gradient(145deg, #0077aa, #004477); border-color: #00aaff;" for="addFolderInput">➕ Добавить папку в плейлист</label>
+        <input type="file" id="addFolderInput" webkitdirectory directory multiple accept="audio/*">
+        
+        <span class="folder-status" id="folderStatus">В плейлисте треков: 0</span>
+    </div>
+
+    <div class="viz-select-container">
+        <span class="viz-label">🎨 Визуализация:</span>
+        <select class="viz-select" id="vizSelect" onchange="changeVisualizerMode(this.value)">
+            <option value="1">1. ✨ 3D Сфера Пульсар</option>
+            <option value="2">2. 🌊 3D Волна Мечты</option>
+            <option value="3">3. ⭕ 3D Неоновый Тор</option>
+            <option value="4">4. 🌌 3D Взрывное Облако</option>
+            <option value="5">5. 📊 3D Эквалайзер Столбцы</option>
+            <option value="6">6. 🔺 3D Кибер Пирамида</option>
+            <option value="7">7. 🧬 3D ДНК Мутация</option>
+            <option value="8">8. ☣️ 3D Кислотное Кольцо</option>
+            <option value="9">9. 📡 3D Радар Сканнер</option>
+            <option value="10">10. 💎 3D Кристалл Хаоса</option>
+            <option value="11">11. 💥 3D Сверхновая</option>
+            <option value="12">12. ✨ 3D Звездный Дождь</option>
+            <option value="13">13. 🕳️ 3D Черная Дыра</option>
+            <option value="14">14. 🔔 3D Звуковой Маятник</option>
+            <option value="15">15. 🧊 3D Взрывной Куб</option>
+            <option value="16" selected>16. 🔥 3D MilkDrop (Winamp / AIMP)</option>
+            <option value="17">17. 📊 3D Winamp Spectrum</option>
+            <option value="18">18. 📉 3D Winamp Oscilloscope</option>
+            <option value="0">❌ Отключить</option>
+        </select>
+    </div>
+
+    <div class="viz-settings-bar">
+        <div class="setting-group">
+            <span>⏱ Скорость:</span>
+            <button class="setting-btn" onclick="adjustSpeed(-0.1)">➖</button>
+            <span class="setting-val" id="speedVal">1.0x</span>
+            <button class="setting-btn" onclick="adjustSpeed(0.1)">➕</button>
+        </div>
+        <div class="setting-group">
+            <span>📏 Высота:</span>
+            <button class="setting-btn" onclick="adjustHeight(-40)">➖</button>
+            <span class="setting-val" id="heightVal">320px</span>
+            <button class="setting-btn" onclick="adjustHeight(40)">➕</button>
+        </div>
+        <div class="setting-group">
+            <button class="setting-btn" onclick="toggleFullScreen()" id="fsBtn">⛶ На весь экран</button>
+        </div>
+    </div>
+
+    <div class="visualizer-box" id="vizBoxContainer" title="Двойной тап для полного экрана">
+        <div id="threeCanvasContainer"></div>
+    </div>
+
+    <audio id="mainAudio" crossorigin="anonymous"></audio>
+
+    <div class="progress-container">
+        <span class="time-stamp" id="currentTime">00:00</span>
+        <input type="range" class="seek-bar" id="seekBar" value="0" max="100">
+        <span class="time-stamp" id="totalTime">00:00</span>
+    </div>
+
+    <div class="controls-wrapper">
+        <div class="player-controls">
+            <button id="shuffleBtn" title="Случайный порядок">🔀</button>
+            <button id="prevBtn" title="Назад">⏮</button>
+            <button id="playBtn" title="Воспроизвести">▶ Плей</button>
+            <button id="pauseBtn" title="Пауза">⏸ Пауза</button>
+            <button id="stopBtn" title="Стоп">⏹ Стоп</button>
+            <button id="nextBtn" title="Вперед">⏭</button>
+            <button id="loopBtn" title="Повтор">🔁</button>
+        </div>
+        <div class="volume-box">
+            🔊 <input type="range" class="volume-slider" id="volumeSlider" min="0" max="1" step="0.05" value="1">
+        </div>
+    </div>
+</div>
+
+<div class="playlist-container" id="playlistContainer">
+    <div style="text-align: center; color: #777; padding: 25px;">Выберите папку с помощью кнопки выше, чтобы загрузить треки.</div>
+</div>
+</main>
+
+<script>
+let playlist = [];
+let currentIndex = 0;
+let isShuffle = false;
+let isLoop = false;
+let currentVizMode = 16;
+let animSpeedMultiplier = 1.0;
+let objectScaleMultiplier = 1.0;
+let currentVizHeight = 320;
+
+const folderInput = document.getElementById('folderInput');
+const addFolderInput = document.getElementById('addFolderInput');
+const folderStatus = document.getElementById('folderStatus');
+const playlistContainer = document.getElementById('playlistContainer');
+
+const audio = document.getElementById('mainAudio');
+const playerBox = document.getElementById('playerBox');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const playBtn = document.getElementById('playBtn');
+const pauseBtn = document.getElementById('pauseBtn');
+const stopBtn = document.getElementById('stopBtn');
+const shuffleBtn = document.getElementById('shuffleBtn');
+const loopBtn = document.getElementById('loopBtn');
+const trackNameElem = document.getElementById('currentTrackName');
+const vizBoxContainer = document.getElementById('vizBoxContainer');
+const seekBar = document.getElementById('seekBar');
+const currentTimeElem = document.getElementById('currentTime');
+const totalTimeElem = document.getElementById('totalTime');
+const volumeSlider = document.getElementById('volumeSlider');
+const speedValElem = document.getElementById('speedVal');
+const heightValElem = document.getElementById('heightVal');
+const fsBtn = document.getElementById('fsBtn');
+const threeContainer = document.getElementById('threeCanvasContainer');
+
+// Функция обработки файлов из папки (включая вложенные подпапки через webkitRelativePath)
+function processFiles(files, append = false) {
+    let newTracks = [];
+    
+    for (let i = 0; i < files.length; i++) {
+        let file = files[i];
+        let ext = file.name.split('.').pop().toLowerCase();
+        // Поддерживаемые аудио форматы
+        if (['mp3', 'wav', 'm4a', 'flac', 'aac', 'ogg'].includes(ext) || file.type.startsWith('audio/')) {
+            newTracks.push({
+                name: file.name.replace(/\.[^/.]+$/, ""),
+                path: file.webkitRelativePath || file.name,
+                url: URL.createObjectURL(file)
+            });
+        }
+    }
+
+    // Сортируем новые треки по пути/имени для красивого порядка
+    newTracks.sort((a, b) => a.path.localeCompare(b.path));
+
+    if (append) {
+        playlist = playlist.concat(newTracks);
+    } else {
+        playlist = newTracks;
+        currentIndex = 0;
+    }
+
+    folderStatus.textContent = `В плейлисте треков: ${playlist.length}`;
+    renderPlaylist();
+
+    if (!append && playlist.length > 0) {
+        playTrack(0);
+    }
+}
+
+folderInput.addEventListener('change', (e) => {
+    processFiles(e.target.files, false);
+});
+
+addFolderInput.addEventListener('change', (e) => {
+    processFiles(e.target.files, true);
+    // Сбрасываем значение input, чтобы можно было выбрать ту же папку повторно при необходимости
+    e.target.value = '';
+});
+
+function renderPlaylist() {
+    if (playlist.length === 0) {
+        playlistContainer.innerHTML = '<div style="text-align: center; color: #777; padding: 25px;">В плейлисте пока нет треков.</div>';
+        return;
+    }
+
+    let html = '';
+    playlist.forEach((song, index) => {
+        html += `
+        <div class="song-row song-item" id="song-card-${index}" onclick="playTrack(${index})">
+            <div class="song-info">
+                <span class="song-num">#${String(index + 1).padStart(2, '0')}</span>
+                <div class="song-name">🎵 ${escapeHtml(song.name)} <span style="font-size: 11px; color: #557766;">(${escapeHtml(song.path)})</span></div>
+            </div>
+            <div class="song-duration">--:--</div>
+        </div>`;
+    });
+    playlistContainer.innerHTML = html;
+}
+
+function escapeHtml(text) {
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function adjustSpeed(amount) {
+    animSpeedMultiplier = Math.max(0.1, Math.min(5.0, animSpeedMultiplier + amount));
+    speedValElem.textContent = animSpeedMultiplier.toFixed(1) + 'x';
+}
+
+function adjustHeight(amount) {
+    currentVizHeight = Math.max(200, Math.min(520, currentVizHeight + amount));
+    vizBoxContainer.style.height = currentVizHeight + 'px';
+    heightValElem.textContent = currentVizHeight + 'px';
+    resizeVisualizer();
+}
+
+function toggleFullScreen() {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        if (vizBoxContainer.requestFullscreen) vizBoxContainer.requestFullscreen();
+        else if (vizBoxContainer.webkitRequestFullscreen) vizBoxContainer.webkitRequestFullscreen();
+    } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    }
+}
+vizBoxContainer.addEventListener('dblclick', toggleFullScreen);
+
+function resizeVisualizer() {
+    const width = vizBoxContainer.clientWidth;
+    const height = vizBoxContainer.clientHeight;
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    renderer.setSize(width, height);
+}
+window.addEventListener('resize', resizeVisualizer);
+
+// Three.js сцена
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, vizBoxContainer.clientWidth / vizBoxContainer.clientHeight, 0.1, 1000);
+camera.position.z = 5;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(vizBoxContainer.clientWidth, vizBoxContainer.clientHeight);
+threeContainer.appendChild(renderer.domElement);
+
+let currentMesh = null;
+let originalPositions = null;
+
+function create3DScene(mode) {
+    if (currentMesh) {
+        scene.remove(currentMesh);
+        currentMesh = null;
+    }
+    originalPositions = null;
+
+    if (mode === 1) {
+        const geometry = new THREE.SphereGeometry(1.8, 32, 32);
+        const material = new THREE.MeshBasicMaterial({ color: 0x00ffaa, wireframe: true });
+        currentMesh = new THREE.Mesh(geometry, material);
+        originalPositions = geometry.attributes.position.array.slice();
+    } else if (mode === 2) {
+        const geometry = new THREE.PlaneGeometry(5, 3.5, 24, 24);
+        const material = new THREE.MeshBasicMaterial({ color: 0x0088cc, wireframe: true });
+        currentMesh = new THREE.Mesh(geometry, material);
+        currentMesh.rotation.x = 0.6;
+        originalPositions = geometry.attributes.position.array.slice();
+    } else if (mode === 3) {
+        const geometry = new THREE.TorusGeometry(1.6, 0.45, 16, 60);
+        const material = new THREE.MeshBasicMaterial({ color: 0xffff00, wireframe: true });
+        currentMesh = new THREE.Mesh(geometry, material);
+        originalPositions = geometry.attributes.position.array.slice();
+    } else if (mode === 4) {
+        const geometry = new THREE.BufferGeometry();
+        const count = 1000;
+        const positions = new Float32Array(count * 3);
+        const origPos = new Float32Array(count * 3);
+        for(let i=0; i<count*3; i+=3) {
+            let x = (Math.random() - 0.5) * 5;
+            let y = (Math.random() - 0.5) * 5;
+            let z = (Math.random() - 0.5) * 5;
+            positions[i] = x; positions[i+1] = y; positions[i+2] = z;
+            origPos[i] = x; origPos[i+1] = y; origPos[i+2] = z;
+        }
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        const material = new THREE.PointsMaterial({ color: 0x00ffaa, size: 0.09, transparent: true, opacity: 0.9 });
+        currentMesh = new THREE.Points(geometry, material);
+        originalPositions = origPos;
+    } else if (mode === 5) {
+        currentMesh = new THREE.Group();
+        for(let i=-7; i<=7; i++) {
+            const geo = new THREE.BoxGeometry(0.35, 1.2, 0.35);
+            const mat = new THREE.MeshBasicMaterial({ color: 0x00ffaa, wireframe: true });
+            const m = new THREE.Mesh(geo, mat);
+            m.position.x = i * 0.5;
+            currentMesh.add(m);
+        }
+    } else if (mode === 16) {
+        const geometry = new THREE.PlaneGeometry(6, 6, 36, 36);
+        const material = new THREE.MeshBasicMaterial({ color: 0x00ffaa, wireframe: true, side: THREE.DoubleSide });
+        currentMesh = new THREE.Mesh(geometry, material);
+        currentMesh.rotation.x = -1.1;
+        originalPositions = geometry.attributes.position.array.slice();
+    } else {
+        const geometry = new THREE.BoxGeometry(2.0, 2.0, 2.0);
+        const material = new THREE.MeshBasicMaterial({ color: 0x00ffaa, wireframe: true });
+        currentMesh = new THREE.Mesh(geometry, material);
+        originalPositions = geometry.attributes.position.array.slice();
+    }
+
+    if (currentMesh) {
+        currentMesh.scale.setScalar(objectScaleMultiplier);
+        scene.add(currentMesh);
+    }
+}
+create3DScene(16);
+
+let audioCtx, analyser, dataArray, waveArray;
+let isAudioInitialized = false;
+
+function initAudioAnalyser() {
+    if (isAudioInitialized) return;
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+        analyser = audioCtx.createAnalyser();
+        const source = audioCtx.createMediaElementSource(audio);
+        source.connect(analyser);
+        analyser.connect(audioCtx.destination);
+        analyser.fftSize = 128;
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        waveArray = new Uint8Array(analyser.frequencyBinCount);
+        isAudioInitialized = true;
+    } catch(e){}
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+
+    let bass = 0;
+    if (isAudioInitialized && analyser && !audio.paused) {
+        analyser.getByteFrequencyData(dataArray);
+        bass = dataArray[2] / 110.0;
+    }
+
+    if (currentMesh) {
+        const time = Date.now() * 0.005 * animSpeedMultiplier;
+
+        if (currentVizMode === 16 && originalPositions && currentMesh.geometry) { 
+            currentMesh.rotation.z += 0.004 * animSpeedMultiplier;
+            const pos = currentMesh.geometry.attributes.position;
+            for (let i = 0; i < pos.count; i++) {
+                let ox = originalPositions[i*3], oy = originalPositions[i*3+1];
+                let dist = Math.sqrt(ox*ox + oy*oy);
+                let z = Math.sin(time * 3 - dist * 1.5) * Math.cos(time * 2 + ox) * bass * 1.5;
+                pos.setZ(i, z);
+            }
+            pos.needsUpdate = true;
+        } else {
+            currentMesh.rotation.y += 0.006 * animSpeedMultiplier;
+            currentMesh.rotation.x += 0.003 * animSpeedMultiplier;
+        }
+        renderer.render(scene, camera);
+    }
+}
+animate();
+
+function changeVisualizerMode(val) {
+    currentVizMode = parseInt(val);
+    if (currentVizMode === 0) {
+        vizBoxContainer.style.display = 'none';
+    } else {
+        vizBoxContainer.style.display = 'block';
+        create3DScene(currentVizMode);
+    }
+}
+
+function formatTime(seconds) {
+    let min = Math.floor(seconds / 60);
+    let sec = Math.floor(seconds % 60);
+    return String(min).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+}
+
+function loadTrack(index) {
+    if (playlist.length === 0) return;
+    currentIndex = index;
+    audio.src = playlist[currentIndex].url;
+    let trackName = playlist[currentIndex].name;
+    trackNameElem.innerText = "▶ " + trackName;
+    
+    document.querySelectorAll('.song-item').forEach((item, idx) => {
+        if(idx === currentIndex) {
+            item.classList.add('playing-now');
+            item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+            item.classList.remove('playing-now');
+        }
+    });
+}
+
+function playTrack(index) {
+    initAudioAnalyser();
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    loadTrack(index);
+    audio.play().then(() => playerBox.classList.add('playing')).catch(err => console.error(err));
+}
+
+playBtn.addEventListener('click', () => {
+    initAudioAnalyser();
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    if (!audio.src && playlist.length > 0) loadTrack(currentIndex);
+    audio.play();
+    playerBox.classList.add('playing');
+});
+
+pauseBtn.addEventListener('click', () => {
+    audio.pause();
+    playerBox.classList.remove('playing');
+});
+
+stopBtn.addEventListener('click', () => {
+    audio.pause();
+    audio.currentTime = 0;
+    playerBox.classList.remove('playing');
+    seekBar.value = 0;
+    currentTimeElem.innerText = "00:00";
+});
+
+audio.addEventListener('timeupdate', () => {
+    if (audio.duration) {
+        let pct = (audio.currentTime / audio.duration) * 100;
+        seekBar.value = pct;
+        currentTimeElem.innerText = formatTime(audio.currentTime);
+        totalTimeElem.innerText = formatTime(audio.duration);
+    }
+});
+
+seekBar.addEventListener('input', () => {
+    if (audio.duration) {
+        audio.currentTime = (seekBar.value / 100) * audio.duration;
+    }
+});
+
+volumeSlider.addEventListener('input', () => {
+    audio.volume = volumeSlider.value;
+});
+
+nextBtn.addEventListener('click', () => {
+    if (playlist.length === 0) return;
+    currentIndex = isShuffle ? Math.floor(Math.random() * playlist.length) : (currentIndex + 1) % playlist.length;
+    playTrack(currentIndex);
+});
+
+prevBtn.addEventListener('click', () => {
+    if (playlist.length === 0) return;
+    currentIndex = (currentIndex - 1 + playlist.length) % playlist.length;
+    playTrack(currentIndex);
+});
+
+shuffleBtn.addEventListener('click', () => {
+    isShuffle = !isShuffle;
+    shuffleBtn.classList.toggle('active-mode', isShuffle);
+});
+
+loopBtn.addEventListener('click', () => {
+    isLoop = !isLoop;
+    audio.loop = isLoop;
+    loopBtn.classList.toggle('active-mode', isLoop);
+});
+
+audio.addEventListener('ended', () => {
+    if (!isLoop) nextBtn.click();
+    else audio.play();
+});
+</script>
+</body>
+</html>
